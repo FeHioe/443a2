@@ -40,7 +40,7 @@ int merge_runs (MergeManager * merger, int total_mem, int block_size, int sublis
 		return FAILURE;
 
 	while (merger->current_heap_size > 0) { //heap is not empty
-
+		printf("heap: %d\n", merger->current_heap_size);
 		HeapElement smallest;
 		Record next; //here next comes from input buffer
 		
@@ -57,9 +57,10 @@ int merge_runs (MergeManager * merger, int total_mem, int block_size, int sublis
 				return FAILURE;
 		}		
 
+
 		merger->output_buffer [merger->current_output_buffer_position].UID1=smallest.UID1;
 		merger->output_buffer [merger->current_output_buffer_position].UID2=smallest.UID2;
-	
+		
 		merger->current_output_buffer_position++;
 
         //staying on the last slot of the output buffer - next will cause overflow
@@ -69,21 +70,19 @@ int merge_runs (MergeManager * merger, int total_mem, int block_size, int sublis
 				merger->current_output_buffer_position=0;
 			}	
 		}
-
+	
 	}
 
 	
 	//flush what remains in output buffer
 	if(merger->current_output_buffer_position > 0) {
-		if(flush_output_buffer(merger)!=SUCCESS) 
+		if(flush_output_buffer(merger)!=SUCCESS)
 			return FAILURE;
 	}
 	
 	clean_up(merger);
-	
 	return SUCCESS;	
 }
-
 
 int get_top_heap_element (MergeManager * merger, HeapElement * result){
 	HeapElement item;
