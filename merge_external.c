@@ -79,7 +79,7 @@ int merge_runs (MergeManager * merger, int total_mem, int block_size, int sublis
 	
 	}
 
-	
+	/*
 	//flush what remains in output buffer
 	if(merger->current_output_buffer_position > 0) {
 		if(flush_output_buffer(merger)!=SUCCESS)
@@ -87,7 +87,7 @@ int merge_runs (MergeManager * merger, int total_mem, int block_size, int sublis
 	}
 	
 	clean_up(merger);
-	
+	*/
 	return SUCCESS;	
 }
 
