@@ -39,10 +39,8 @@ int merge_runs (MergeManager * merger, int total_mem, int block_size, int sublis
 	if (init_merge (merger, total_mem, block_size, sublist_num)!=SUCCESS)
 		return FAILURE;
 
-	print_buffers(merger);
-	print_heap(merger);
-
 	while (merger->current_heap_size > 0) { //heap is not empty
+
 		HeapElement smallest;
 		Record next; //here next comes from input buffer
 		
@@ -62,15 +60,23 @@ int merge_runs (MergeManager * merger, int total_mem, int block_size, int sublis
 		merger->output_buffer [merger->current_output_buffer_position].UID1=smallest.UID1;
 		merger->output_buffer [merger->current_output_buffer_position].UID2=smallest.UID2;
 		
+		printf("position: %d buffer_capacity: %d\n",  merger->current_output_buffer_position, merger-> output_buffer_capacity);
+
 		merger->current_output_buffer_position++;
+		printf("position: %d buffer_capacity: %d\n",  merger->current_output_buffer_position, merger-> output_buffer_capacity);
 
         //staying on the last slot of the output buffer - next will cause overflow
-		if(merger->current_output_buffer_position == merger-> output_buffer_capacity ) {
-			if(flush_output_buffer(merger)!=SUCCESS) {
+		if(merger->current_output_buffer_position-1 == merger-> output_buffer_capacity ) {
+			int flushed = flush_output_buffer(merger);
+			printf("flushed\n");
+			if(flushed!=SUCCESS) {
 				return FAILURE;			
 				merger->current_output_buffer_position=0;
 			}	
 		}
+
+		print_buffers(merger);
+		print_heap(merger);
 	
 	}
 
@@ -301,37 +307,17 @@ void clean_up (MergeManager * merger) {
 	fclose(merger->outputFP);
 	free(merger->output_buffer);
 
-	/* free all input buffers */
 	int i;
 	for (i = 0; i < merger->heap_capacity; i ++){
 		free(merger->input_buffers[i]);	
 	}
+
 	free(merger->input_buffers);
-	
 	free(merger->current_input_file_positions);
 	free(merger->current_input_buffer_positions);
 	free(merger->total_input_buffer_elements);
 	
-	/* free MergeManager */
 	free(merger);
-	
-	/*
-	fclose(manager->outputFP);
-	free(manager->heap);
-	free(manager->input_file_numbers);
-	free(manager->output_buffer);
-
-	int i;
-	for (i = 0; i < manager->input_buffer_capacity; i++) {
-		free(manager->input_buffers[i]);
-	}
-
-	free(manager->input_buffers);
-	free(manager->current_input_file_positions);
-	free(manager->current_input_buffer_positions);
-	free(manager->total_input_buffer_elements);
-	free(manager);
-	*/
 }
 
 int compare_heap_elements (HeapElement *a, HeapElement *b) {
