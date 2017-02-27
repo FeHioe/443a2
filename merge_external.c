@@ -74,8 +74,8 @@ int merge_runs (MergeManager * merger, int total_mem, int block_size, int sublis
 			}	
 		}
 
-		print_buffers(merger);
-		print_heap(merger);
+		//print_buffers(merger);
+		//print_heap(merger);
 	
 	}
 
@@ -171,9 +171,9 @@ int init_merge (MergeManager * manager, int total_mem, int block_size, int subli
 	int buffer_capacity = blocks_per_buf * block_size;
 
 	// Initalize struct values
-	manager->heap = (HeapElement *) malloc (sublist_num);
+	manager->heap = (HeapElement *) calloc (sublist_num, sizeof(HeapElement));
 
-	manager->input_file_numbers = (int *) malloc (sublist_num);
+	manager->input_file_numbers = (int *) calloc (sublist_num, sizeof(int));
 	for (i=0; i < sublist_num; i++){
 		manager->input_file_numbers[i] = i;
 	};
@@ -182,19 +182,19 @@ int init_merge (MergeManager * manager, int total_mem, int block_size, int subli
 	manager->current_output_buffer_position = 0;
 	manager->output_buffer_capacity = buffer_capacity;
 	
-	manager->input_buffers = (Record **) malloc(sublist_num);
+	manager->input_buffers = (Record **) calloc(sublist_num, sizeof(Record *));
 	for (i = 0; i < sublist_num; i++) { 
 		manager->input_buffers[i] = (Record *) calloc (buffer_capacity, sizeof (Record));
 	}
 
 	manager->input_buffer_capacity = buffer_capacity;
 
-	manager->current_input_file_positions = (int *) malloc (sublist_num);
+	manager->current_input_file_positions = (int *) calloc (sublist_num, sizeof(int));
 	for (i = 0; i < sublist_num; i++){
 		manager->current_input_file_positions[i] = 0;
 	}
 
-	manager->current_input_buffer_positions = (int *) malloc (sublist_num);
+	manager->current_input_buffer_positions = (int *) calloc (sublist_num, sizeof(int));
 	for (i = 0; i < sublist_num; i++){
 		manager->current_input_buffer_positions[i] = 0;
 	}
@@ -236,12 +236,16 @@ int flush_output_buffer (MergeManager * manager) {
 		return FAILURE;
 	}
 
+	print_buffers(manager);
+	print_heap(manager);
+
 	if (fwrite(manager->output_buffer, sizeof(Record), manager->current_output_buffer_position, manager->outputFP) == 0) {
 		printf("ERROR: output buffer could not be written to disk");
 		return FAILURE;
 	}
 	fflush(manager->outputFP);
-	
+	fclose(manager->outputFP);
+
 	manager->current_output_buffer_position = 0;
 
 	return SUCCESS;
@@ -303,20 +307,15 @@ int refill_buffer (MergeManager * manager, int file_number) {
 void clean_up (MergeManager * merger) {
 	free(merger->heap);
 	free(merger->input_file_numbers);
-	fclose(merger->outputFP);
 	free(merger->output_buffer);
 
 	int i;
-	for (i = 0; i < merger->heap_capacity; i ++){
+	for (i = 0; i < merger->heap_capacity; i++){
 		free(merger->input_buffers[i]);	
 	}
 
 	free(merger->input_buffers);
 	free(merger->current_input_file_positions);
-	free(merger->current_input_buffer_positions);
-	free(merger->total_input_buffer_elements);
-	
-	free(merger);
 }
 
 int compare_heap_elements (HeapElement *a, HeapElement *b) {
