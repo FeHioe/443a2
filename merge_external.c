@@ -59,9 +59,7 @@ int merge_runs (MergeManager * merger, int total_mem, int block_size, int sublis
 
 		merger->output_buffer [merger->current_output_buffer_position].UID1=smallest.UID1;
 		merger->output_buffer [merger->current_output_buffer_position].UID2=smallest.UID2;
-		
-		printf("position: %d buffer_capacity: %d\n",  merger->current_output_buffer_position, merger-> output_buffer_capacity);
-
+	
 		merger->current_output_buffer_position++;
 
         //staying on the last slot of the output buffer - next will cause overflow
@@ -79,15 +77,17 @@ int merge_runs (MergeManager * merger, int total_mem, int block_size, int sublis
 	
 	}
 
-	/*
+	
 	//flush what remains in output buffer
 	if(merger->current_output_buffer_position > 0) {
-		if(flush_output_buffer(merger)!=SUCCESS)
+		int flushed = flush_output_buffer(merger);
+		printf("flushed\n");
+		if(flushed!=SUCCESS) 
 			return FAILURE;
 	}
 	
 	clean_up(merger);
-	*/
+	
 	return SUCCESS;	
 }
 
@@ -231,13 +231,21 @@ int init_merge (MergeManager * manager, int total_mem, int block_size, int subli
 }
 
 int flush_output_buffer (MergeManager * manager) {
-	manager->outputFP = fopen(manager->output_file_name , "a");
+	manager->outputFP = fopen(manager->output_file_name , "ab");
 	if (!manager->outputFP){
 		return FAILURE;
 	}
 
 	print_buffers(manager);
-	print_heap(manager);
+	int i;
+	int count = 0;
+	for (i=0; i <manager->current_output_buffer_position; i++){
+		printf("position: %d buffer_capacity: %d\n",  manager->current_output_buffer_position, manager-> output_buffer_capacity);
+
+		printf("UID1: %d UID2 %d\n", manager->output_buffer[i]. UID1, manager->output_buffer[i]. UID2);
+		count ++;
+	}
+	printf("size %d count: %d\n", manager->current_output_buffer_position, count);
 
 	if (fwrite(manager->output_buffer, sizeof(Record), manager->current_output_buffer_position, manager->outputFP) == 0) {
 		printf("ERROR: output buffer could not be written to disk");
