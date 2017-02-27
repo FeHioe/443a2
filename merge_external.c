@@ -66,7 +66,7 @@ int merge_runs (MergeManager * merger, int total_mem, int block_size, int sublis
 		printf("position: %d buffer_capacity: %d\n",  merger->current_output_buffer_position, merger-> output_buffer_capacity);
 
         //staying on the last slot of the output buffer - next will cause overflow
-		if(merger->current_output_buffer_position-1 == merger-> output_buffer_capacity ) {
+		if(merger->current_output_buffer_position == merger-> output_buffer_capacity ) {
 			int flushed = flush_output_buffer(merger);
 			printf("flushed\n");
 			if(flushed!=SUCCESS) {
@@ -163,13 +163,13 @@ int insert_into_heap (MergeManager * merger, int run_id, Record *input){
 
 int init_merge (MergeManager * manager, int total_mem, int block_size, int sublist_num) {
 	int i;
-	int blocks_per_buf = (total_mem/(sublist_num+1)) / block_size;
+	int blocks_per_buf = total_mem/(sublist_num+1) / block_size;
 	if (blocks_per_buf < 1){
 		printf("Memory too small.\n");
 		exit(1);
 	}
 
-	int buffer_capacity = blocks_per_buf * block_size;
+	int buffer_capacity = blocks_per_buf * block_size / sizeof(Record);
 
 	// Initalize struct values
 	manager->heap = (HeapElement *) malloc (sublist_num);
