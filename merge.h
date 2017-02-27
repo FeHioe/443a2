@@ -45,7 +45,7 @@ typedef struct merge_manager {
 }MergeManager;
 
 //1. main loop
-int merge_runs (MergeManager * manager); 
+int merge_runs (MergeManager * manager, int total_mem, int block_size, int sublist_num); 
 
 //2. creates and fills initial buffers, initializes heap taking 1 top element from each buffer 
 int init_merge (MergeManager * manager, int total_mem, int block_size, int sublist_num); 

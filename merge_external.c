@@ -1,12 +1,12 @@
 #include "merge.h"
 
-/*
+
 //manager fields should be already initialized in the caller
-int merge_runs (MergeManager * merger){	
+int merge_runs (MergeManager * merger, int total_mem, int block_size, int sublist_num){	
 	int  result; //stores SUCCESS/FAILURE returned at the end	
 	
 	//1. go in the loop through all input files and fill-in initial buffers
-	if (init_merge (merger)!=SUCCESS)
+	if (init_merge (merger, total_mem, block_size, sublist_num)!=SUCCESS)
 		return FAILURE;
 
 	while (merger->current_heap_size > 0) { //heap is not empty
@@ -50,9 +50,10 @@ int merge_runs (MergeManager * merger){
 	}
 	
 	clean_up(merger);
+	
 	return SUCCESS;	
 }
-*/
+
 
 int get_top_heap_element (MergeManager * merger, HeapElement * result){
 	HeapElement item;
@@ -124,6 +125,13 @@ int insert_into_heap (MergeManager * merger, int run_id, Record *input){
 
 int init_merge (MergeManager * manager, int total_mem, int block_size, int sublist_num) {
 	int i;
+	int blocks_per_buf = (total_mem/(sublist_num+1)) / block_size;
+	if (blocks_per_buf < 1){
+		printf("Memory too small.\n");
+		exit(1);
+	}
+
+	int buffer_capacity = blocks_per_buf * block_size;
 
 	// Initalize struct values
 	manager->heap = (HeapElement *) malloc (sublist_num);
@@ -133,71 +141,148 @@ int init_merge (MergeManager * manager, int total_mem, int block_size, int subli
 		manager->input_file_numbers[i] = i;
 	};
 
-	manager->output_buffer = (Record *) calloc (block_size/sizeof(Record), sizeof(Record));
-	manager->curent_ouput_buffer_position = 0;
-	//manager->output_buffer_capacity = ;
+	manager->output_buffer = (Record *) calloc (buffer_capacity, sizeof(Record));
+	manager->current_output_buffer_position = 0;
+	manager->output_buffer_capacity = buffer_capacity;
 	
-	manager->input_buffers = (Record **) malloc(sublist_num * sizeof(Record *));
-	printf("input buf assigned\n");	
-	strcpy(manager->input_prefix, "sublist");
-	
-	
-	FILE *fp_read;
-	int blocks_per_mem = total_mem/block_size;	
-	
-	printf("output buf assigned\n");	
-	
-	blocks_per_mem = blocks_per_mem - 1;
-	int blocks_per_input_buf = blocks_per_mem / sublist_num;	
+	manager->input_buffers = (Record **) malloc(sublist_num);
+	for (i = 0; i < sublist_num; i++) { 
+		manager->input_buffers[i] = (Record *) calloc (buffer_capacity, sizeof (Record));
+	}
 
-	if (blocks_per_input_buf < 1 ) {
-		printf("Error: must have one block per input buffer.");
-		exit(1);
-	}; 	
-	
-	char str[1024];
-	
-	manager->current_input_file_positions = (int *) malloc(sublist_num * sizeof(int *));
-	printf("current assigned\n");	
-	
-	for (i=0; i < sublist_num; i++){
-		manager->input_buffers[i] = (Record *)malloc(blocks_per_input_buf * block_size);
-		printf("input %d assigned\n", i);	
-		
-		sprintf(str, "sublist%d.dat", i);
-		if (!(fp_read = fopen(str, "rb"))) {
-    		printf("Error: could not open file for read.\n");
-    		exit(1);
-  		};
-  	
-  		manager->current_input_file_positions[i] = fread(manager->input_buffers[i], sizeof(Record), (blocks_per_input_buf * block_size)/sizeof(Record), fp_read);
-		printf("read\n");		
-	};	
-	
-	printf("first current_input_pos: %d\n", manager->current_input_file_positions[0]);
-	for(i=0; i< (blocks_per_input_buf * block_size)/sizeof(Record)  ;i++){
-		printf("printing index %d of first input buffer: %d\n", i, manager->input_buffers[0][i].UID2);
-	};
+	manager->input_buffer_capacity = buffer_capacity;
+
+	manager->current_input_file_positions = (int *) malloc (sublist_num);
+	for (i = 0; i < sublist_num; i++){
+		manager->current_input_file_positions[i] = 0;
+	}
+
+	manager->current_input_buffer_positions = (int *) malloc (sublist_num);
+	for (i = 0; i < sublist_num; i++){
+		manager->current_input_buffer_positions[i] = 0;
+	}
+
+	manager->total_input_buffer_elements = calloc (sublist_num, sizeof(int));
+	for (i = 0; i < sublist_num; i++){
+		manager->total_input_buffer_elements[i] = 0;
+	}
+
+	manager->current_heap_size = 0;
+	manager->heap_capacity = sublist_num;
+
+	strcpy(manager->output_file_name, "output.dat");
+	strcpy(manager->input_prefix, "sublist");
+
+
+	for (i = 0; i < sublist_num; i++){
+		refill_buffer(manager, i);
+
+		Record next_record;
+		int result = get_next_input_element(manager, i, &next_record);
+
+		if (result == SUCCESS) { 
+			if (insert_into_heap(manager, i, &next_record) != SUCCESS)
+				return FAILURE;
+		} 
+
+		if (result == FAILURE) { 
+			return result;
+		} 
+	}
 
 	return SUCCESS;
 }
 
 int flush_output_buffer (MergeManager * manager) {
+	manager->outputFP = fopen(manager->output_file_name , "a");
+	if (!manager->outputFP){
+		return FAILURE;
+	}
+
+	if (fwrite(manager->output_buffer, sizeof(Record), manager->current_output_buffer_position, manager->outputFP) == 0) {
+		printf("ERROR: output buffer could not be written to disk");
+		return FAILURE;
+	}
+	fflush(manager->outputFP);
+	fclose(manager->outputFP);
+	
+	manager->current_output_buffer_position = 0;
+
 	return SUCCESS;
 }
 
 int get_next_input_element(MergeManager * manager, int file_number, Record *result) {
+	if (manager->current_input_buffer_positions[file_number] == manager->total_input_buffer_elements[file_number]){
+		int refill = refill_buffer(manager, file_number);
+		if (refill != SUCCESS) {
+			return refill;
+		}
+	}
+
+	*result = manager->input_buffers[file_number][manager->current_input_buffer_positions[file_number]];
+	manager->current_input_buffer_positions[file_number]++;
+
 	return SUCCESS;
 }
 
 int refill_buffer (MergeManager * manager, int file_number) {
+	char input_file[MAX_PATH_LENGTH];
+	char input_num[MAX_PATH_LENGTH];
+	
+	strcpy(input_file, "sublist");
+	sprintf(input_num, "%d", file_number);
+	strcat(input_file, input_num);
+	strcat(input_file, ".dat");
+	//puts(input_file);
+
+	if (manager->current_input_file_positions[file_number] == -1){
+		return EMPTY;
+	}
+
+	manager->inputFP = fopen(input_file, "rb");
+	if (!manager->inputFP){
+		return FAILURE;
+	}
+
+	fseek(manager->inputFP, manager->current_input_file_positions[file_number], SEEK_SET);
+	int records_read = fread(manager->input_buffers[file_number], sizeof(Record), manager->input_buffer_capacity, manager->inputFP);
+
+	if (records_read != manager->input_buffer_capacity && !feof(manager->inputFP)){
+			fprintf(stderr, "refill_buffer - Reading failed. \n");
+			return FAILURE;
+	}
+
+	manager->current_input_file_positions[file_number] = ftell(manager->inputFP);
+	if (feof(manager->inputFP)){
+		manager->current_input_file_positions[file_number] = -1;
+	}
+	fclose(manager->inputFP);
+
+	manager->current_input_buffer_positions[file_number] = 0;
+	manager->total_input_buffer_elements[file_number] = records_read;
+
 	return SUCCESS;
 }
 
-void clean_up (MergeManager * merger) {
-	
+void clean_up (MergeManager * manager) {
+	fclose(manager->outputFP);
+	free(manager->heap);
+	free(manager->inputFP);
+	free(manager->input_file_numbers);
+	free(manager->output_buffer);
+
+	int i;
+	for (i = 0; i < manager->input_buffer_capacity; i++) {
+		free(manager->input_buffers[i]);
+	}
+
+	free(manager->input_buffers);
+	free(manager->current_input_file_positions);
+	free(manager->current_input_buffer_positions);
+	free(manager->total_input_buffer_elements);
+	free(manager);
 }
 
 int compare_heap_elements (HeapElement *a, HeapElement *b) {
-	return 0;
+	return (a->UID2 - b->UID2);
 }
