@@ -1,5 +1,35 @@
 #include "merge.h"
 
+void print_buffers(MergeManager * manager){
+	int i, j;
+	for (i = 0; i < manager->heap_capacity; i++){
+		printf("input %d: ", i);
+		for (j = 0; j < manager->total_input_buffer_elements[i]; j++){
+			if (j == manager->current_input_buffer_positions[i]){
+				printf("->");
+			}
+			printf("(%d, %d) ", manager->input_buffers[i][j].UID1, manager->input_buffers[i][j].UID2);
+		}
+		printf("\n");
+	}
+	printf("output: ");
+	for (i = 0; i < manager->output_buffer_capacity; i++){
+		if (i == manager->current_output_buffer_position){
+			printf("->");
+		}
+		printf("(%d, %d) ", manager->output_buffer[i].UID1, manager->output_buffer[i].UID2);
+	}
+	printf("\n------------------------------\n");
+}
+
+void print_heap(MergeManager * manager){
+	printf("heap: ");
+	int i;
+	for (i = 0; i < manager->current_heap_size; i++){
+		printf("[%d](%d, %d) ", manager->heap[i].run_id, manager->heap[i].UID1, manager->heap[i].UID2);
+	}
+	printf("\n");
+}
 
 //manager fields should be already initialized in the caller
 int merge_runs (MergeManager * merger, int total_mem, int block_size, int sublist_num){	
@@ -8,6 +38,9 @@ int merge_runs (MergeManager * merger, int total_mem, int block_size, int sublis
 	//1. go in the loop through all input files and fill-in initial buffers
 	if (init_merge (merger, total_mem, block_size, sublist_num)!=SUCCESS)
 		return FAILURE;
+
+	print_buffers(merger);
+	print_heap(merger);
 
 	while (merger->current_heap_size > 0) { //heap is not empty
 		HeapElement smallest;
@@ -25,7 +58,6 @@ int merge_runs (MergeManager * merger, int total_mem, int block_size, int sublis
 			if(insert_into_heap (merger, smallest.run_id, &next)!=SUCCESS)
 				return FAILURE;
 		}		
-
 
 		merger->output_buffer [merger->current_output_buffer_position].UID1=smallest.UID1;
 		merger->output_buffer [merger->current_output_buffer_position].UID2=smallest.UID2;
@@ -204,7 +236,6 @@ int flush_output_buffer (MergeManager * manager) {
 		return FAILURE;
 	}
 	fflush(manager->outputFP);
-	fclose(manager->outputFP);
 	
 	manager->current_output_buffer_position = 0;
 
@@ -264,10 +295,29 @@ int refill_buffer (MergeManager * manager, int file_number) {
 	return SUCCESS;
 }
 
-void clean_up (MergeManager * manager) {
+void clean_up (MergeManager * merger) {
+	free(merger->heap);
+	free(merger->input_file_numbers);
+	fclose(merger->outputFP);
+	free(merger->output_buffer);
+
+	/* free all input buffers */
+	int i;
+	for (i = 0; i < merger->heap_capacity; i ++){
+		free(merger->input_buffers[i]);	
+	}
+	free(merger->input_buffers);
+	
+	free(merger->current_input_file_positions);
+	free(merger->current_input_buffer_positions);
+	free(merger->total_input_buffer_elements);
+	
+	/* free MergeManager */
+	free(merger);
+	
+	/*
 	fclose(manager->outputFP);
 	free(manager->heap);
-	free(manager->inputFP);
 	free(manager->input_file_numbers);
 	free(manager->output_buffer);
 
@@ -281,6 +331,7 @@ void clean_up (MergeManager * manager) {
 	free(manager->current_input_buffer_positions);
 	free(manager->total_input_buffer_elements);
 	free(manager);
+	*/
 }
 
 int compare_heap_elements (HeapElement *a, HeapElement *b) {

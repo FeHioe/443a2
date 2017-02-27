@@ -1,28 +1,6 @@
 #include "merge.h"
 int phase1(char *filename, int total_mem, int block_size);
 
-void print_buffers(MergeManager * manager){
-	int i, j;
-	for (i = 0; i < manager->heap_capacity; i++){
-		printf("input %d: ", i);
-		for (j = 0; j < manager->total_input_buffer_elements[i]; j++){
-			if (j == manager->current_input_buffer_positions[i]){
-				printf("->");
-			}
-			printf("(%d, %d) ", manager->input_buffers[i][j].UID1, manager->input_buffers[i][j].UID2);
-		}
-		printf("\n");
-	}
-	printf("output: ");
-	for (i = 0; i < manager->output_buffer_capacity; i++){
-		if (i == manager->current_output_buffer_position){
-			printf("->");
-		}
-		printf("(%d, %d) ", manager->output_buffer[i].UID1, manager->output_buffer[i].UID2);
-	}
-	printf("\n------------------------------\n");
-}
-
 int main (int argc, char **argv) {
 	//process and validate command-line arguments
 	
