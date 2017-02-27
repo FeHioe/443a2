@@ -64,25 +64,18 @@ int merge_runs (MergeManager * merger, int total_mem, int block_size, int sublis
 
         //staying on the last slot of the output buffer - next will cause overflow
 		if(merger->current_output_buffer_position == merger-> output_buffer_capacity ) {
-			int flushed = flush_output_buffer(merger);
-			printf("flushed\n");
-			if(flushed!=SUCCESS) {
+			if(flush_output_buffer(merger)!=SUCCESS) {
 				return FAILURE;			
 				merger->current_output_buffer_position=0;
 			}	
 		}
 
-		//print_buffers(merger);
-		//print_heap(merger);
-	
 	}
 
 	
 	//flush what remains in output buffer
 	if(merger->current_output_buffer_position > 0) {
-		int flushed = flush_output_buffer(merger);
-		printf("flushed\n");
-		if(flushed!=SUCCESS) 
+		if(flush_output_buffer(merger)!=SUCCESS) 
 			return FAILURE;
 	}
 	
@@ -235,7 +228,7 @@ int flush_output_buffer (MergeManager * manager) {
 	if (!manager->outputFP){
 		return FAILURE;
 	}
-
+/*
 	print_buffers(manager);
 	int i;
 	int count = 0;
@@ -246,7 +239,7 @@ int flush_output_buffer (MergeManager * manager) {
 		count ++;
 	}
 	printf("size %d count: %d\n", manager->current_output_buffer_position, count);
-
+*/
 	if (fwrite(manager->output_buffer, sizeof(Record), manager->current_output_buffer_position, manager->outputFP) == 0) {
 		printf("ERROR: output buffer could not be written to disk");
 		return FAILURE;
