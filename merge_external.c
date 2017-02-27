@@ -63,7 +63,6 @@ int merge_runs (MergeManager * merger, int total_mem, int block_size, int sublis
 		printf("position: %d buffer_capacity: %d\n",  merger->current_output_buffer_position, merger-> output_buffer_capacity);
 
 		merger->current_output_buffer_position++;
-		printf("position: %d buffer_capacity: %d\n",  merger->current_output_buffer_position, merger-> output_buffer_capacity);
 
         //staying on the last slot of the output buffer - next will cause overflow
 		if(merger->current_output_buffer_position == merger-> output_buffer_capacity ) {
@@ -169,7 +168,7 @@ int init_merge (MergeManager * manager, int total_mem, int block_size, int subli
 		exit(1);
 	}
 
-	int buffer_capacity = blocks_per_buf * block_size / sizeof(Record);
+	int buffer_capacity = blocks_per_buf * block_size;
 
 	// Initalize struct values
 	manager->heap = (HeapElement *) malloc (sublist_num);
