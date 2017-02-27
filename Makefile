@@ -19,3 +19,5 @@ main_merge: $(MAIN_SRC)
 clean:  
 	rm disk_sort
 
+clean_dat:
+	rm output.dat
